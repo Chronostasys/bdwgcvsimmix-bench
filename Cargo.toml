@@ -1,0 +1,49 @@
+[package]
+name = "bdwgcvsimmix-bench"
+version = "0.1.0"
+edition = "2021"
+authors = ["The pivot-lang Authors"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+immix = { package = "immix", git = "https://github.com/Pivot-Studio/pivot-lang", features = ["madv_free"] }
+libc = "0.2"
+rand = "0.8"
+instant = "0.1"
+
+
+[build-dependencies]
+rerun_except = "0.1"
+num_cpus = "1.13"
+which = "4.0"
+bindgen = "0.56"
+
+[dev-dependencies]
+criterion = "0.3"
+cfg-if = "1"
+
+[profile.bench]
+opt-level = 3
+debug = true
+debug-assertions = false
+overflow-checks = false
+# lto = "fat"
+#panic = 'unwind' # This setting is always ignored.
+incremental = true
+codegen-units = 1
+rpath = true
+
+[profile.release]
+lto = "fat"
+opt-level = 3
+
+
+[[bench]]
+name = "gcbench-bdwgc"
+harness = false
+
+
+[[bench]]
+name = "gcbench-plimmix"
+harness = false
