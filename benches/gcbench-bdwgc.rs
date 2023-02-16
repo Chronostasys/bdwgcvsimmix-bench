@@ -1,16 +1,12 @@
-use std::{mem::size_of, ptr::null_mut, thread::{sleep, available_parallelism}};
+use std::thread::available_parallelism;
 
 use bdwgcvsimmix_bench::*;
 use criterion::{criterion_group, criterion_main, Criterion};
-use immix::{VtableFunc, Collector, VisitFunc, ObjectType};
+use immix::{Collector, VisitFunc, VtableFunc};
 use instant::Duration;
-use libc::malloc;
-use rand::random;
 
 #[inline(never)]
-fn immix_noop1(_u:usize) {
-    
-}
+fn immix_noop1(_u: usize) {}
 
 macro_rules! keep_on_stack {
     ($($e: expr),*) => {
@@ -38,12 +34,9 @@ fn gctest_vtable(
     let obj = ptr as *mut GCTestObj;
     unsafe {
         mark_ptr(gc, (&mut (*obj).b) as *mut *mut GCTestObj as *mut u8);
-        // mark_ptr(gc, (&mut (*obj).d) as *mut *mut u64 as *mut u8);
+        mark_ptr(gc, (&mut (*obj).d) as *mut *mut u64 as *mut u8);
         mark_ptr(gc, (&mut (*obj).e) as *mut *mut GCTestObj as *mut u8);
     }
-}
-unsafe extern "C" fn fin(_: *mut u8,_: *mut u8){
-    println!("finalizer triggered");
 }
 
 unsafe fn alloc_test_obj(space: &mut Heap) -> *mut GCTestObj {
@@ -64,132 +57,120 @@ fn gcbench(space: &mut Heap) -> Duration {
         let mut long_lived = alloc_test_obj(space);
         let rustptr = (&mut long_lived) as *mut *mut GCTestObj as *mut u8;
         ROOT = rustptr;
-        // space.add_root(rustptr, ObjectType::Pointer);
-        Populate(kLongLivedTreeDepth,  long_lived, space);
-        let time_start = std::time::Instant::now();
+        space.add_root(rustptr);
+        populate(K_LONG_LIVED_TREE_DEPTH, long_lived, space);
         // let _tt = space.collect();
-        let ep = time_start.elapsed();
         // println!("ep: {:?}", ep);
-        let mut d = kMinTreeDepth;
-        while d <= kMaxTreeDepth {
-            TimeConstruction(d, space);
+        let mut d = K_MIN_TREE_DEPTH;
+        while d <= K_MAX_TREE_DEPTH {
+            time_construction(d, space);
             // Populate(d,  long_lived, space);
             d += 2;
-            let time_start = std::time::Instant::now();
-            // let _tt = space.collect();
-            let ep = time_start.elapsed();
             // println!("ep: {:?}", ep);
         }
         // let _tt = space.collect();
         // space.remove_root(rustptr);
-        let time_start = std::time::Instant::now();
         // let _tt = space.collect();
-        let ep = time_start.elapsed();
         // println!("ep: {:?}", ep);
         // sleep(Duration::from_secs(100000));
+        space.remove_root(rustptr);
         keep_on_stack!(&mut long_lived);
         let t = t.elapsed();
         // println!("time: {:?}", t);
         // tt.0 + tt.1
         t
     }
-
 }
 
-
-
-fn bench_malloc() -> *mut GCTestObj {
-    unsafe { GC_malloc(size_of::<GCTestObj>()) as *mut GCTestObj }
-}
-pub struct Node {
-    left: Option<Gc<Self>>,
-    right: Option<Gc<Self>>,
-    i: i32,
-    j: i32,
-}
-
-fn TreeSize(i: i32) -> i32 {
+fn tree_size(i: i32) -> i32 {
     (1 << (i + 1)) - 1
 }
 
-fn NumIters(i: i32) -> i32 {
-    2 * TreeSize(kStretchTreeDepth) / TreeSize(i)
+fn num_iters(i: i32) -> i32 {
+    2 * tree_size(K_STRETCH_TREE_DEPTH) / tree_size(i)
 }
 #[inline(never)]
-unsafe fn Populate(idepth: i32, thisnode: * mut GCTestObj, space: &mut Heap) {
+unsafe fn populate(idepth: i32, thisnode: *mut GCTestObj, space: &mut Heap) {
     if idepth <= 0 {
         return;
     }
     (*thisnode).b = alloc_test_obj(space);
     (*thisnode).e = alloc_test_obj(space);
-    Populate(idepth - 1, (*thisnode).e, space);
-    Populate(idepth - 1, (*thisnode).b, space);
+    populate(idepth - 1, (*thisnode).e, space);
+    populate(idepth - 1, (*thisnode).b, space);
 }
 #[inline(never)]
-unsafe fn MakeTree(idepth: i32, space: &mut Heap) -> * mut GCTestObj {
+unsafe fn make_tree(idepth: i32, space: &mut Heap) -> *mut GCTestObj {
     if idepth <= 0 {
         return alloc_test_obj(space);
     } else {
-        let left = MakeTree(idepth - 1, space);
-        let right = MakeTree(idepth - 1, space);
-        let result = alloc_test_obj(space);
+        let mut left = make_tree(idepth - 1, space);
+        let rustptr1 = (&mut left) as *mut *mut GCTestObj as *mut u8;
+        space.add_root(rustptr1);
+        let mut right = make_tree(idepth - 1, space);
+        let rustptr2 = (&mut right) as *mut *mut GCTestObj as *mut u8;
+        space.add_root(rustptr2);
+        let mut result = alloc_test_obj(space);
+        let rustptr3 = (&mut result) as *mut *mut GCTestObj as *mut u8;
+        space.add_root(rustptr3);
         (*result).b = left;
         (*result).e = right;
+        space.remove_root(rustptr2);
+        space.remove_root(rustptr1);
+        space.remove_root(rustptr3);
         result
     }
 }
 #[inline(never)]
-unsafe fn TimeConstruction(depth: i32, space: &mut Heap) {
-    let iNumIters = NumIters(depth);
+unsafe fn time_construction(depth: i32, space: &mut Heap) {
+    let i_num_iters = num_iters(depth);
 
-    let start = instant::Instant::now();
-    for _ in 0..iNumIters {
-        let tempTree = alloc_test_obj(space);
-        Populate(depth,  tempTree, space);
-        keep_on_stack!(tempTree)
+    for _ in 0..i_num_iters {
+        let mut temp_tree = alloc_test_obj(space);
+        let rustptr = (&mut temp_tree) as *mut *mut GCTestObj as *mut u8;
+        space.add_root(rustptr);
+        populate(depth, temp_tree, space);
+        space.remove_root(rustptr);
+        keep_on_stack!(temp_tree)
         // destroy tempTree
     }
 
-    let start = instant::Instant::now();
-    for _ in 0..iNumIters {
-        let tempTree = MakeTree(depth, space);
-        keep_on_stack!(tempTree)
+    for _ in 0..i_num_iters {
+        let _temp_tree = make_tree(depth, space);
+        keep_on_stack!(_temp_tree)
     }
 }
-const kStretchTreeDepth: i32 = 18;
-const kLongLivedTreeDepth: i32 = 16;
-const kArraySize: i32 = 500000;
-const kMinTreeDepth: i32 = 4;
-const kMaxTreeDepth: i32 = 16;
-struct Array {
-    value: [f64; kArraySize as usize],
-}
+const K_STRETCH_TREE_DEPTH: i32 = 18;
+const K_LONG_LIVED_TREE_DEPTH: i32 = 16;
+
+const K_MIN_TREE_DEPTH: i32 = 4;
+const K_MAX_TREE_DEPTH: i32 = 16;
 
 fn criterion_bench(c: &mut Criterion) {
-    let mut heap = Heap::new();
-
     let mut group = c.benchmark_group("bdwgc");
     group.sample_size(10);
     // group.bench_function("gc malloc", |b|b.iter(bench_malloc));
     // group.bench_function("gcbench", |b| b.iter(|| gcbench(&mut heap)));
 
     // group.bench_function("gcbench", |b| b.iter_custom(|i| {
-    //     // let mut heap = Heap::new();
+    //     let mut heap = Heap::new();
     //     let mut sum = Duration::new(0, 0);
     //     for _ in 0..i {
     //         sum += gcbench(&mut heap);
     //     }
     //     sum
     // }));
-    group.bench_function("bdwgc 8 threads", |b| {
+    let mut heap = Heap::new();
+    group.bench_function(format!("bdwgc {} threads", get_threads()), |b| {
         b.iter(|| {
             let mut threads = Vec::with_capacity(4);
-            for _ in 0..8 {
+            for _ in 0..get_threads() {
                 threads.push(std::thread::spawn(move || {
-                    let mut heap = heap;
                     heap.register_current_thread();
                     gcbench(&mut heap);
-                    unsafe{ GC_unregister_my_thread();}
+                    unsafe {
+                        GC_unregister_my_thread();
+                    }
                 }));
             }
 
@@ -199,6 +180,10 @@ fn criterion_bench(c: &mut Criterion) {
         });
     });
 }
+
+fn get_threads() -> usize {
+    available_parallelism().unwrap().get()
+}
+
 criterion_group!(benches, criterion_bench);
 criterion_main!(benches);
-

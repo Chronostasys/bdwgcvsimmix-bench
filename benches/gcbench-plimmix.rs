@@ -10,7 +10,7 @@ fn immix_benchmark(c: &mut Criterion) {
     // 这个测试中并没有记录所有的gcroot，如果启用evacuation
     // 可能会导致部分指针驱逐后不自愈
     set_evacuation(false);
-    
+
     {
         // group.bench_function(
         //     &"singlethread gc stress benchmark small objects".to_string(),
@@ -30,25 +30,30 @@ fn immix_benchmark(c: &mut Criterion) {
         //     },
         // );
         no_gc_thread();
-        group.bench_function("multi-thread (8) gc stress benchmark small objects", |b| {
-            b.iter(|| {
-                let mut threads = Vec::with_capacity(4);
-                for _ in 0..8 {
-                    threads.push(std::thread::spawn(move || {
-                        SPACE.with(|space| {
-                            let mut space = space.borrow_mut();
+        group.bench_function(
+            format!(
+                "multi-thread ({}) gc stress benchmark small objects",
+                get_threads()
+            ),
+            |b| {
+                b.iter(|| {
+                    let mut threads = Vec::with_capacity(4);
+                    for _ in 0..get_threads() {
+                        threads.push(std::thread::spawn(move || {
+                            SPACE.with(|space| {
+                                let mut space = space.borrow_mut();
+                                // t.elapsed()
+                                gcbench(&mut space)
+                            })
+                        }));
+                    }
 
-                            // t.elapsed()
-                            gcbench(&mut space)
-                        })
-                    }));
-                }
-
-                while let Some(th) = threads.pop() {
-                    th.join().unwrap();
-                }
-            });
-        });
+                    while let Some(th) = threads.pop() {
+                        th.join().unwrap();
+                    }
+                });
+            },
+        );
     }
 }
 
@@ -98,7 +103,7 @@ fn gcbench(space: &mut Collector) -> Duration {
             d += 2;
         }
         space.remove_root(rustptr);
-
+        // std::thread::sleep(Duration::from_secs(100000));
         t.elapsed()
     }
 }
@@ -143,7 +148,6 @@ unsafe fn make_tree(idepth: i32, space: &mut Collector) -> *mut GCTestObj {
     }
 }
 #[inline(never)]
-
 unsafe fn time_construction(depth: i32, space: &mut Collector) {
     let i_num_iters = num_iters(depth);
 
@@ -167,6 +171,9 @@ const K_LONG_LIVED_TREE_DEPTH: i32 = 16;
 const K_MIN_TREE_DEPTH: i32 = 4;
 const K_MAX_TREE_DEPTH: i32 = 16;
 
+fn get_threads() -> usize {
+    available_parallelism().unwrap().get()
+}
 
 criterion_group!(benches, immix_benchmark,);
 criterion_main!(benches);

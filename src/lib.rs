@@ -1,5 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
+use immix::{ObjectType, SPACE};
+
 #[link(name = "gc")]
 extern "C" {
     pub fn GC_malloc(size: usize) -> *mut u8;
@@ -18,34 +20,25 @@ extern "C" {
         old_fn_ptr: *mut *mut u8,
         old_client_data: *mut *mut u8,
     );
-    pub fn GC_add_roots(
-        start: *mut *mut u8,
-        end: *mut *mut u8,
-    );
-    pub fn GC_remove_roots(
-        start: *mut *mut u8,
-        end: *mut *mut u8,
-    );
+    pub fn GC_add_roots(start: *mut *mut u8, end: *mut *mut u8);
+    pub fn GC_remove_roots(start: *mut *mut u8, end: *mut *mut u8);
     // GC_API size_t GC_CALL GC_get_prof_stats(struct GC_prof_stats_s *,
     //  size_t /* stats_sz */);
-    pub fn GC_get_prof_stats(state: * mut GCState ,size:usize) -> usize;
+    pub fn GC_get_prof_stats(state: *mut GCState, size: usize) -> usize;
     pub fn GC_allow_register_threads();
     pub fn GC_register_my_thread(stack: *mut StackBase) -> i32;
     pub fn GC_unregister_my_thread() -> i32;
     pub fn GC_get_stack_base(stack: *mut StackBase) -> i32;
     pub fn GC_disable();
     pub fn GC_enable();
-    pub fn GC_set_on_collection_event(
-        fn_ptr: unsafe extern "C" fn(tp:i8),
-    );
+    pub fn GC_set_on_collection_event(fn_ptr: unsafe extern "C" fn(tp: i8));
 }
 
-unsafe extern "C" fn callback(tp:i8) {
-    if tp == 6 {
-        println!("GC stw start");
-    }
-}
-
+// unsafe extern "C" fn callback(tp:i8) {
+//     if tp == 6 {
+//         println!("GC stw start");
+//     }
+// }
 
 #[derive(Debug)]
 #[repr(C)]
@@ -53,7 +46,6 @@ pub struct StackBase {
     pub mem_base: *mut u8,
     pub reg_base: *mut u8,
 }
-
 
 pub struct Gc<T> {
     ptr: *mut T,
@@ -128,6 +120,19 @@ impl Heap {
         // }
         // println!("{:?}",state);
     }
+
+    /// 虽然bdw不需要shadow stack，但是生产中immix也不需要（使用stackmap
+    /// 所以为了公平起见，这里搞个假的shadow stack来平衡开销
+    pub fn add_root(&self, root: *mut u8) {
+        SPACE.with(|space| {
+            space.borrow_mut().add_root(root, ObjectType::Pointer);
+        });
+    }
+    pub fn remove_root(&self, root: *mut u8) {
+        SPACE.with(|space| {
+            space.borrow_mut().remove_root(root);
+        });
+    }
 }
 
 impl<T> Clone for Gc<T> {
@@ -137,8 +142,6 @@ impl<T> Clone for Gc<T> {
 }
 
 impl<T> Copy for Gc<T> {}
-
-
 
 // struct GC_prof_stats_s {
 //     GC_word heapsize_full;
@@ -195,4 +198,3 @@ pub struct GCState {
     expl_freed_bytes_since_gc: usize,
     obtained_from_os_bytes: usize,
 }
-  
