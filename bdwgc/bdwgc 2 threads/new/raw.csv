@@ -1,0 +1,11 @@
+group,function,value,throughput_num,throughput_type,sample_measured_value,unit,iteration_count
+bdwgc,bdwgc 2 threads,,,,958228000.0,ns,1
+bdwgc,bdwgc 2 threads,,,,930198347.0,ns,1
+bdwgc,bdwgc 2 threads,,,,965767628.0,ns,1
+bdwgc,bdwgc 2 threads,,,,944996560.0,ns,1
+bdwgc,bdwgc 2 threads,,,,944666057.0,ns,1
+bdwgc,bdwgc 2 threads,,,,1303843275.0,ns,1
+bdwgc,bdwgc 2 threads,,,,1010229744.0,ns,1
+bdwgc,bdwgc 2 threads,,,,1022909498.0,ns,1
+bdwgc,bdwgc 2 threads,,,,972482591.0,ns,1
+bdwgc,bdwgc 2 threads,,,,959761638.0,ns,1

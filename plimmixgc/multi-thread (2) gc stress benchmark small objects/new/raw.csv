@@ -1,0 +1,11 @@
+group,function,value,throughput_num,throughput_type,sample_measured_value,unit,iteration_count
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1678483057.0,ns,1
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1112902685.0,ns,1
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1142557575.0,ns,1
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1060244854.0,ns,1
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1142107670.0,ns,1
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1071483793.0,ns,1
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1059836850.0,ns,1
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1118733279.0,ns,1
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1065948325.0,ns,1
+plimmixgc,multi-thread (2) gc stress benchmark small objects,,,,1090790282.0,ns,1
