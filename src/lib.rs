@@ -78,7 +78,7 @@ pub struct Heap;
 impl Heap {
     pub fn new() -> Self {
         unsafe {
-            GC_set_markers_count(1);
+            // GC_set_markers_count(1);
             GC_init();
             // GC_set_on_collection_event(callback);
             // GC_set_disable_automatic_collection(1);

@@ -173,18 +173,18 @@ fn criterion_bench(c: &mut Criterion) {
     // group.bench_function("gc malloc", |b|b.iter(bench_malloc));
     // group.bench_function("gcbench", |b| b.iter(|| gcbench(&mut heap)));
 
-    group.bench_function("gcbench", |b| b.iter_custom(|i| {
-        // let mut heap = Heap::new();
-        let mut sum = Duration::new(0, 0);
-        for _ in 0..i {
-            sum += gcbench(&mut heap);
-        }
-        sum
-    }));
-    group.bench_function("gcb", |b| {
+    // group.bench_function("gcbench", |b| b.iter_custom(|i| {
+    //     // let mut heap = Heap::new();
+    //     let mut sum = Duration::new(0, 0);
+    //     for _ in 0..i {
+    //         sum += gcbench(&mut heap);
+    //     }
+    //     sum
+    // }));
+    group.bench_function("bdwgc 8 threads", |b| {
         b.iter(|| {
             let mut threads = Vec::with_capacity(4);
-            for _ in 0..get_threads() {
+            for _ in 0..8 {
                 threads.push(std::thread::spawn(move || {
                     let mut heap = heap;
                     heap.register_current_thread();
@@ -202,6 +202,3 @@ fn criterion_bench(c: &mut Criterion) {
 criterion_group!(benches, criterion_bench);
 criterion_main!(benches);
 
-fn get_threads() -> usize {
-    available_parallelism().unwrap().get()
-}

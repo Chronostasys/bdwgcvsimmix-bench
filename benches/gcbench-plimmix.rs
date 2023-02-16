@@ -12,28 +12,28 @@ fn immix_benchmark(c: &mut Criterion) {
     set_evacuation(false);
     
     {
-        group.bench_function(
-            &"singlethread gc stress benchmark small objects".to_string(),
-            |b| {
-                b.iter_custom(|i| {
-                    let mut total = Duration::new(0, 0);
-                    for _ in 0..i {
-                        total += SPACE.with(|space| {
-                            let mut space = space.borrow_mut();
+        // group.bench_function(
+        //     &"singlethread gc stress benchmark small objects".to_string(),
+        //     |b| {
+        //         b.iter_custom(|i| {
+        //             let mut total = Duration::new(0, 0);
+        //             for _ in 0..i {
+        //                 total += SPACE.with(|space| {
+        //                     let mut space = space.borrow_mut();
 
-                            // t.elapsed()
-                            gcbench(&mut space)
-                        });
-                    }
-                    total
-                });
-            },
-        );
+        //                     // t.elapsed()
+        //                     gcbench(&mut space)
+        //                 });
+        //             }
+        //             total
+        //         });
+        //     },
+        // );
         no_gc_thread();
-        group.bench_function("multi-thread gc stress benchmark small objects", |b| {
+        group.bench_function("multi-thread (8) gc stress benchmark small objects", |b| {
             b.iter(|| {
                 let mut threads = Vec::with_capacity(4);
-                for _ in 0..get_threads() {
+                for _ in 0..8 {
                     threads.push(std::thread::spawn(move || {
                         SPACE.with(|space| {
                             let mut space = space.borrow_mut();
@@ -167,9 +167,6 @@ const K_LONG_LIVED_TREE_DEPTH: i32 = 16;
 const K_MIN_TREE_DEPTH: i32 = 4;
 const K_MAX_TREE_DEPTH: i32 = 16;
 
-fn get_threads() -> usize {
-    available_parallelism().unwrap().get()
-}
 
 criterion_group!(benches, immix_benchmark,);
 criterion_main!(benches);
