@@ -31,9 +31,6 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Install LLVM
-        uses: Pivot-Studio/setup-llvm@main
-
       - name: Cargo bench
         uses: actions-rs/cargo@v1
         with:
