@@ -40,10 +40,5 @@ opt-level = 3
 
 
 [[bench]]
-name = "gcbench-bdwgc"
-harness = false
-
-
-[[bench]]
 name = "gcbench-plimmix"
 harness = false
